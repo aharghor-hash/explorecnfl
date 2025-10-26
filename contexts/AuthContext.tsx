@@ -105,10 +105,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (profileError) {
             console.error("Error creating profile:", profileError);
-            // Attempt to delete the auth user if profile creation fails to avoid orphaned auth users.
-            // This is a best-effort operation and may require manual cleanup if it fails.
-            await supabase.auth.admin.deleteUser(data.user.id);
-            return { error: { message: 'Registration succeeded, but failed to create user profile. The user has been removed. Please try again.' } };
+            // CRITICAL SECURITY FIX: Do not attempt to delete the auth user from the client-side using an admin key.
+            // It's better to have an orphaned auth user that can be manually cleaned up by the admin
+            // than to expose admin privileges to the browser.
+            return { error: { message: 'Registration succeeded, but failed to create user profile. Please contact the admin to resolve this issue.' } };
         }
     }
     

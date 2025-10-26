@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const Icon: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
@@ -13,7 +12,6 @@ export const TeamIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="
 export const PlayerIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></Icon>;
 export const PointsIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></Icon>;
 export const ParticipantIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-1.78-4.125" /></Icon>;
-// FIX: Removed typo 'a' from export statement.
 export const ReplacementIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></Icon>;
 export const LeaderboardIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></Icon>;
 export const AnnouncementIcon = () => <Icon><path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.354 1.875 18.662 1 19.432 1h.338c.77 0 1.437.635 1.437 1.437v15.126c0 .802-.667 1.437-1.437 1.437h-.338c-.77 0-1.078-.875-.658-1.514C20.625 16.236 17.1 14 13 14h-1.832a4.001 4.001 0 01-2.564-1.317z" /></Icon>;
