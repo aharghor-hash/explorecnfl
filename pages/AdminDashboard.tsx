@@ -609,9 +609,17 @@ const ParticipantDetailsView: React.FC = () => {
      const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
      const getPlayerName = (id: string) => playerMap.get(id)?.name || 'Unknown Player';
 
-     const playerPointMap = useMemo(() => (
-        new Map(state.players.map(p => [p.id, p.points.reduce((sum, current) => sum + (current || 0), 0)]))
-    ), [state.players]);
+    // OPTIMIZATION: Pre-calculate total points for each player to avoid re-calculating in a loop.
+    // This is the key to preventing the UI from freezing.
+    const playerPointMap = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const player of state.players) {
+            const totalPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
+            map.set(player.id, totalPoints);
+        }
+        return map;
+    }, [state.players]);
+
 
      const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
@@ -730,9 +738,16 @@ const LeaderboardView: React.FC = () => {
     const leaderboardRef = useRef<HTMLDivElement>(null);
     const [lastUpdated, setLastUpdated] = useState<string>('');
 
-    const playerPointMap = useMemo(() => (
-        new Map(state.players.map(p => [p.id, p.points.reduce((sum, current) => sum + (current || 0), 0)]))
-    ), [state.players]);
+    // OPTIMIZATION: Pre-calculate total points for each player to avoid re-calculating in a loop.
+    // This is the key to preventing the UI from freezing.
+    const playerPointMap = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const player of state.players) {
+            const totalPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
+            map.set(player.id, totalPoints);
+        }
+        return map;
+    }, [state.players]);
 
     const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
