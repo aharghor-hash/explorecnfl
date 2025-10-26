@@ -606,11 +606,12 @@ const ParticipantDetailsView: React.FC = () => {
      const { state } = useData();
      const [expandedId, setExpandedId] = useState<string | null>(null);
 
-     const getPlayerName = (id: string) => state.players.find(p => p.id === id)?.name || 'Unknown Player';
+     const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
+     const getPlayerName = (id: string) => playerMap.get(id)?.name || 'Unknown Player';
 
      const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = state.players.find(playerData => playerData.id === p.playerId);
+            const player = playerMap.get(p.playerId);
             if (!player) return total;
             
             const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
@@ -620,7 +621,7 @@ const ParticipantDetailsView: React.FC = () => {
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-     }, [state.players]);
+     }, [playerMap]);
 
      return (
          <div className="bg-gray-800 p-8 rounded-lg">
@@ -728,9 +729,11 @@ const LeaderboardView: React.FC = () => {
     const leaderboardRef = useRef<HTMLDivElement>(null);
     const [lastUpdated, setLastUpdated] = useState<string>('');
 
+    const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
+
     const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = state.players.find(playerData => playerData.id === p.playerId);
+            const player = playerMap.get(p.playerId);
             if (!player) return total;
             
             const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
@@ -740,7 +743,7 @@ const LeaderboardView: React.FC = () => {
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-    }, [state.players]);
+    }, [playerMap]);
 
     const leaderboardData = useMemo(() => {
         return state.participantTeams.map(pt => ({

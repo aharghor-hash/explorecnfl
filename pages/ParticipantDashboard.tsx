@@ -351,11 +351,12 @@ const ViewMyXIView: React.FC<ViewMyXIViewProps> = ({setActiveView, team, status}
 
     if (!team) return <div>You have not created a team yet.</div>;
     
-    const getPlayerDetails = (playerId: string) => state.players.find(p => p.id === playerId);
+    const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
+    const getPlayerDetails = (playerId: string) => playerMap.get(playerId);
 
     const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = state.players.find(playerData => playerData.id === p.playerId);
+            const player = playerMap.get(p.playerId);
             if (!player) return total;
             
             const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
@@ -365,7 +366,7 @@ const ViewMyXIView: React.FC<ViewMyXIViewProps> = ({setActiveView, team, status}
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-    }, [state.players]);
+    }, [playerMap]);
 
     const { totalPoints, rank } = useMemo(() => {
         if (!team) return { totalPoints: 0, rank: 'N/A' };
