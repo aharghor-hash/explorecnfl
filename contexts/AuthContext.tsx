@@ -24,11 +24,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (isUsingMock) return;
 
     const getInitialUser = async () => {
+      try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             await updateUserProfile(session.user);
         }
+      } catch (error) {
+        console.error("Error getting initial user session:", error);
+      } finally {
         setLoading(false);
+      }
     };
 
     getInitialUser();
@@ -40,7 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
             setUser(null);
         }
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
             setLoading(false);
         }
       }
@@ -100,7 +105,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (profileError) {
             console.error("Error creating profile:", profileError);
-            return { error: { message: 'Registration succeeded, but failed to create user profile.' } };
+            // Attempt to delete the auth user if profile creation fails to avoid orphaned auth users.
+            // This is a best-effort operation and may require manual cleanup if it fails.
+            await supabase.auth.admin.deleteUser(data.user.id);
+            return { error: { message: 'Registration succeeded, but failed to create user profile. The user has been removed. Please try again.' } };
         }
     }
     
