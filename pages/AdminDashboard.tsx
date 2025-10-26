@@ -609,19 +609,20 @@ const ParticipantDetailsView: React.FC = () => {
      const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
      const getPlayerName = (id: string) => playerMap.get(id)?.name || 'Unknown Player';
 
+     const playerPointMap = useMemo(() => (
+        new Map(state.players.map(p => [p.id, p.points.reduce((sum, current) => sum + (current || 0), 0)]))
+    ), [state.players]);
+
      const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = playerMap.get(p.playerId);
-            if (!player) return total;
-            
-            const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
+            const totalPlayerPoints = playerPointMap.get(p.playerId) || 0;
             const pointsAtJoining = participantTeam.joinHistory?.[p.playerId] || 0;
             const pointsSinceJoining = totalPlayerPoints - pointsAtJoining;
             
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-     }, [playerMap]);
+     }, [playerPointMap]);
 
      return (
          <div className="bg-gray-800 p-8 rounded-lg">
@@ -729,21 +730,20 @@ const LeaderboardView: React.FC = () => {
     const leaderboardRef = useRef<HTMLDivElement>(null);
     const [lastUpdated, setLastUpdated] = useState<string>('');
 
-    const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
+    const playerPointMap = useMemo(() => (
+        new Map(state.players.map(p => [p.id, p.points.reduce((sum, current) => sum + (current || 0), 0)]))
+    ), [state.players]);
 
     const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = playerMap.get(p.playerId);
-            if (!player) return total;
-            
-            const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
+            const totalPlayerPoints = playerPointMap.get(p.playerId) || 0;
             const pointsAtJoining = participantTeam.joinHistory?.[p.playerId] || 0;
             const pointsSinceJoining = totalPlayerPoints - pointsAtJoining;
             
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-    }, [playerMap]);
+    }, [playerPointMap]);
 
     const leaderboardData = useMemo(() => {
         return state.participantTeams.map(pt => ({

@@ -101,7 +101,7 @@ const ParticipantDashboard: React.FC = () => {
         switch (activeView) {
             case 'dashboard': return <DashboardView setActiveView={setActiveView} event={activeEvent} team={participantTeam} status={eventStatus} />;
             case 'createTeam': return <CreateTeamView setActiveView={setActiveView} />;
-            case 'viewMyXI': return <ViewMyXIView setActiveView={setActiveView} event={activeEvent} team={participantTeam} status={eventStatus} />;
+            case 'viewMyXI': return <ViewMyXIView setActiveView={setActiveView} team={participantTeam} status={eventStatus} />;
             case 'viewAllTeams': return <ViewAllTeamsView />;
             case 'replacePlayer': return <ReplacePlayerView setActiveView={setActiveView} />;
             case 'chatBox': return <ChatBoxView />;
@@ -340,7 +340,6 @@ const CreateTeamView: React.FC<{ setActiveView: (view: ParticipantView) => void 
 
 interface ViewMyXIViewProps {
     setActiveView: (view: ParticipantView) => void;
-    event?: Event;
     team?: ParticipantTeam;
     status: EventStatus;
 }
@@ -351,22 +350,22 @@ const ViewMyXIView: React.FC<ViewMyXIViewProps> = ({setActiveView, team, status}
 
     if (!team) return <div>You have not created a team yet.</div>;
     
-    const playerMap = useMemo(() => new Map(state.players.map(p => [p.id, p])), [state.players]);
-    const getPlayerDetails = (playerId: string) => playerMap.get(playerId);
+    const getPlayerDetails = (playerId: string) => state.players.find(p => p.id === playerId);
+
+    const playerPointMap = useMemo(() => (
+        new Map(state.players.map(p => [p.id, p.points.reduce((sum, current) => sum + (current || 0), 0)]))
+    ), [state.players]);
 
     const getParticipantTotalPoints = useCallback((participantTeam: ParticipantTeam) => {
         const currentPlayersPoints = participantTeam.players.reduce((total, p) => {
-            const player = playerMap.get(p.playerId);
-            if (!player) return total;
-            
-            const totalPlayerPoints = player.points.reduce((sum, current) => sum + (current || 0), 0);
+            const totalPlayerPoints = playerPointMap.get(p.playerId) || 0;
             const pointsAtJoining = participantTeam.joinHistory?.[p.playerId] || 0;
             const pointsSinceJoining = totalPlayerPoints - pointsAtJoining;
             
             return total + (p.isVip ? pointsSinceJoining * 2 : pointsSinceJoining);
         }, 0);
         return (participantTeam.archivedPoints || 0) + currentPlayersPoints;
-    }, [playerMap]);
+    }, [playerPointMap]);
 
     const { totalPoints, rank } = useMemo(() => {
         if (!team) return { totalPoints: 0, rank: 'N/A' };
