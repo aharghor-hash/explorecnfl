@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '../types';
-import { supabase, isUsingMock } from '../supabase';
-import { MOCK_DATA } from './mockData';
-import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
+import * as api from '../supabase/api';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -19,33 +18,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- Real Supabase Auth Logic ---
   useEffect(() => {
-    if (isUsingMock) return;
-
-    const getInitialUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            await updateUserProfile(session.user);
-        }
-      } catch (error) {
-        console.error("Error getting initial user session:", error);
-      } finally {
-        setLoading(false);
+    const updateUserProfile = async (supabaseUser: SupabaseUser | null) => {
+      if (!supabaseUser) {
+        setUser(null);
+        return;
       }
-    };
-
-    getInitialUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (session) {
-            await updateUserProfile(session.user);
+      try {
+        const { data: profile } = await api.getProfile(supabaseUser);
+        if (profile) {
+          setUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email!,
+            fullName: profile.fullName,
+            fbLink: profile.fbLink,
+            role: profile.role as UserRole,
+          });
         } else {
             setUser(null);
         }
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setUser(null);
+      }
+    };
+
+    const initializeSession = async () => {
+        try {
+            const { data: { session } } = await api.getSession();
+            await updateUserProfile(session?.user ?? null);
+        } catch (error) {
+            console.error("Error initializing session:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    initializeSession();
+
+    const { data: authListener } = api.onAuthStateChange(
+      async (event: string, session: Session | null) => {
+        await updateUserProfile(session?.user ?? null);
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
             setLoading(false);
         }
       }
@@ -55,116 +69,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       authListener.subscription.unsubscribe();
     };
   }, []);
-  
-  const updateUserProfile = async (supabaseUser: SupabaseUser) => {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-        
-      if (profile) {
-        setUser({
-          id: supabaseUser.id,
-          email: supabaseUser.email!,
-          fullName: profile.fullName,
-          fbLink: profile.fbLink,
-          role: profile.role as UserRole,
-        });
-      } else if (error) {
-        console.error('Error fetching profile:', error);
-        setUser(null); // Or handle this case more gracefully
-      }
-  }
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await api.signIn(email, password);
     return { error: error ? { message: error.message } : null };
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await api.signOut();
     setUser(null);
   };
 
   const register = async (fullName: string, email: string, fbLink: string, password: string) => {
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
-    
-    if (signUpError) {
-        return { error: { message: signUpError.message } };
+    try {
+      await api.signUp(fullName, email, fbLink, password);
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message } };
     }
-    
-    if (data.user) {
-        const { error: profileError } = await supabase.from('profiles').insert({
-            id: data.user.id,
-            fullName,
-            email,
-            fbLink,
-            role: UserRole.PARTICIPANT,
-        });
-        
-        if (profileError) {
-            console.error("Error creating profile:", profileError);
-            // CRITICAL SECURITY FIX: Do not attempt to delete the auth user from the client-side using an admin key.
-            // It's better to have an orphaned auth user that can be manually cleaned up by the admin
-            // than to expose admin privileges to the browser.
-            return { error: { message: 'Registration succeeded, but failed to create user profile. Please contact the admin to resolve this issue.' } };
-        }
-    }
-    
-    return { error: null };
   };
 
   const updatePassword = async (password: string) => {
-    if (!password) return { error: { message: "Password cannot be empty."}};
-    const { error } = await supabase.auth.updateUser({ password });
+    if (!password) return { error: { message: "Password cannot be empty." } };
+    const { error } = await api.updateUserPassword(password);
     return { error: error ? { message: error.message } : null };
   };
 
-  // --- Mock Auth Logic ---
-  useEffect(() => {
-      if (!isUsingMock) return;
-      // In mock mode, we just finish loading. No user is logged in by default.
-      setLoading(false);
-  }, []);
-
-  const mockLogin = async (email: string, password: string): Promise<{ error: { message: string } | null }> => {
-      setLoading(true);
-      const admin = MOCK_DATA.users.find(u => u.role === UserRole.ADMIN);
-      if (email === admin?.email && password === 'password') {
-          setUser(admin);
-          setLoading(false);
-          return { error: null };
-      }
-      if (email.includes('@') && password) {
-          const participantUser: User = { id: `mock-participant-${Date.now()}`, fullName: 'Mock Participant', email: email, role: UserRole.PARTICIPANT, fbLink: 'https://facebook.com/participant' };
-          setUser(participantUser);
-          setLoading(false);
-          return { error: null };
-      }
-      setLoading(false);
-      return { error: { message: "Invalid credentials. Use admin@cnfl.com / password, or any other email/password for a participant." } };
-  };
-
-  const mockLogout = async () => { setUser(null); };
-  
-  const mockRegister = async (fullName: string, email: string, fbLink: string, password: string): Promise<{ error: { message: string } | null }> => {
-      setLoading(true);
-      const participantUser: User = { id: `mock-participant-${Date.now()}`, fullName, email, role: UserRole.PARTICIPANT, fbLink };
-      setUser(participantUser);
-      setLoading(false);
-      return { error: null };
-  };
-  
-  const mockUpdatePassword = async (password: string): Promise<{ error: { message: string } | null }> => {
-      if (!password) return { error: { message: "Password cannot be empty."}};
-      alert("Password updated in mock mode.");
-      return { error: null };
-  };
-
-  const value = isUsingMock 
-    ? { user, loading, login: mockLogin, logout: mockLogout, register: mockRegister, updatePassword: mockUpdatePassword }
-    : { user, loading, login, logout, register, updatePassword };
+  const value = { user, loading, login, logout, register, updatePassword };
 
   return (
     <AuthContext.Provider value={value}>
